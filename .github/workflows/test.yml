@@ -42,6 +42,9 @@ jobs:
         # If configure-git didn't work, commit will fail:
         git commit -a -m "Test commit"
 
+    - name: Unit tests
+      run: npm run test
+
 
   test-stage-1:
     runs-on: ubuntu-latest

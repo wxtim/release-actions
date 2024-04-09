@@ -1,8 +1,8 @@
-const globals = require("globals")
-const js = require("@eslint/js")
+import globals from "globals"
+import js from "@eslint/js"
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
-module.exports = [
+export default [
     js.configs.recommended,
     {
         languageOptions: {
@@ -10,4 +10,10 @@ module.exports = [
             globals: globals.node,
         },
     },
+    {
+        files: ["**/*.mjs"],
+        languageOptions: {
+            sourceType: "module",
+        },
+    }
 ]
