@@ -1,4 +1,12 @@
 {
+    "name": "cylc-release-actions",
+    "private": true,
+    "scripts": {
+        "lint": "eslint ."
+    },
+    "exports": {
+        ".": "./cylc-action-utils.js"
+    },
     "devDependencies": {
         "eslint": "^9.0.0"
     }

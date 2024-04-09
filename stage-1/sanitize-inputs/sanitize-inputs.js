@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-const {setEnv} = require('cylc-action-utils');
+const {setEnv} = require('cylc-release-actions');
 
 const versionStr = process.env.VERSION.trim();
 setEnv('VERSION', versionStr);

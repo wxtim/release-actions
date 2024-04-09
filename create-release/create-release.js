@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 const {env} = process;
-const {escSQ, execSync, setOutput} = require('cylc-action-utils');
+const {escSQ, execSync, setOutput} = require('cylc-release-actions');
 
 const cmd = [
     'gh', 'release', 'create',
