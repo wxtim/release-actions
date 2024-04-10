@@ -50,7 +50,7 @@ exports.execSync = (cmd, options = {}) => {
         console.log(`[command]${cmd}`);
         try {
             console.log(JSON.stringify(JSON.parse(stdout), null, 2));
-        } catch (err) {
+        } catch {
             console.log(stdout);
         }
         if (!options.verbose) {

@@ -1,4 +1,4 @@
-/* THIS FILE IS PART OF THE CYLC WORKFLOW ENGINE.
+/* THIS FILE IS PART OF THE CYLC SUITE ENGINE.
 Copyright (C) NIWA & British Crown (Met Office) & Contributors.
 
 This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-const {execSync, curlOpts} = require('cylc-release-actions')
-const {env} = process;
+import { describe, expect, it } from 'vitest'
+import { escSQ } from 'cylc-release-actions'
 
-if (!env.PYPI_PACKAGE_NAME) {
-    throw `::error:: No package name supplied`;
-}
-
-const request = `curl -X GET \
-    https://pypi.org/pypi/${env.PYPI_PACKAGE_NAME}/json \
-    ${curlOpts}`
-const {releases} = JSON.parse(execSync(request));
-console.log('Releases on PyPI.org:')
-for (const release in releases) {
-    console.log(`  ${release}`);
-    const diff = execSync(`cmp_py_versions ${release} ${env.SETUP_PY_VERSION}`, {quiet: true});
-    if (!diff) {
-        throw `::error:: ${env.SETUP_PY_VERSION} already exists on PyPI.org`;
-    }
-}
+describe('escSQ', () => {
+    it.each([
+        ['', ''],
+        ['foo', 'foo'],
+        ["foo'bar", 'foo&apos;bar'],
+        ["foo 'bar' baz", 'foo &apos;bar&apos; baz'],
+    ])('%o -> %o', (input, expected) => {
+        expect(escSQ(input)).toBe(expected)
+    })
+})
