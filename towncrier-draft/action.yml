@@ -1,0 +1,29 @@
+name: Towncrier - draft changelog
+description: Draft the changelog for the next release. Write the output to the GH Actions job summary.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Towncrier if needed
+      shell: bash
+      run: python3 -m pip install -q towncrier
+
+    - name: Get package version if NodeJS project
+      id: node
+      shell: bash
+      run: |
+        if [[ -f package.json ]]; then
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Draft changelog
+      shell: bash
+      env:
+        VER: ${{ steps.node.outputs.version }}
+      run: |
+        CMD="towncrier build --draft --date=CCYY-MM-DD"
+        if [[ -n "$VER" ]]; then
+          CMD="$CMD --version $VER"
+        fi
+        echo -e "# Draft changelog\n" >> "$GITHUB_STEP_SUMMARY"
+        $CMD | tee -a "$GITHUB_STEP_SUMMARY"
