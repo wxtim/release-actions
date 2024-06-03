@@ -9,7 +9,7 @@ dynamic = ["version"]
 platforms = ["any"]
 
 [tool.setuptools.dynamic]
-version = {attr = ".FULL_VERSION"}
+version = {attr = "FULL_VERSION"}
 
 [tool.setuptools.packages.find]
 include = ["*"]
