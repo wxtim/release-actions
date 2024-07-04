@@ -102,7 +102,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BODY: |
-            Please do a **normal merge**, not squash merge.
+            > [!IMPORTANT]
+            > Please do a **normal merge**, not squash merge.
+
             Please fix conflicts if necessary.
 
             ---
