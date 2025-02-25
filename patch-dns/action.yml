@@ -1,0 +1,12 @@
+# See https://github.com/actions/runner-images/issues/8649#issuecomment-1779548056
+name: Patch DNS
+description: Fix reverse lookup on MacOS
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      if: startsWith(runner.os, 'macos')
+      run: |
+        echo -e "$(ipconfig getifaddr en0) $(hostname -f) $(hostname -s)" | sudo tee -a /etc/hosts
+        dscacheutil -q host -a name $(hostname -f)

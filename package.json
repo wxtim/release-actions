@@ -1,5 +1,17 @@
 {
+    "name": "cylc-release-actions",
+    "private": true,
+    "scripts": {
+        "lint": "eslint .",
+        "test": "vitest"
+    },
+    "exports": {
+        ".": "./cylc-action-utils.js"
+    },
     "devDependencies": {
-        "eslint": "^8.45.0"
+        "@eslint/js": "^9.0.0",
+        "eslint": "^9.0.0",
+        "globals": "^15.0.0",
+        "vitest": "^3.0.4"
     }
 }

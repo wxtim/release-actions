@@ -98,6 +98,12 @@ runs:
         cat branches.json
 
     - name: Determine compatible Cylc component versions
+      # Need string comparison for bools: https://github.com/actions/runner/issues/2238
+      if: >-
+        (inputs.cylc_flow == 'true' && !inputs.cylc_flow_tag) ||
+        (inputs.cylc_uiserver =='true' && !inputs.cylc_uiserver_tag) ||
+        (inputs.metomi_rose == 'true' && !inputs.metomi_rose_tag) ||
+        (inputs.cylc_rose == 'true' && !inputs.cylc_rose_tag)
       id: get_tag
       shell: bash
       env:

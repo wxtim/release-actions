@@ -16,12 +16,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 const {env} = process;
 const {readFileSync} = require('fs');
-const {escSQ, execSync, curlOpts} = require('cylc-action-utils');
+const {escSQ, execSync, curlOpts} = require('cylc-release-actions');
 // Note: all string properties of the `github` context are available as env vars as `GITHUB_<PROPERTY>`
 // WARNING: Don't use ${env.GITHUB_TOKEN} in execSync() as that might print in log. Use `$GITHUB_TOKEN` instead.
 
 if (!env.VERSION) {
-    throw "::error:: Environment variable `VERSION` not set";
+    throw "::error::Environment variable `VERSION` not set";
 }
 
 const repoURL = `https://github.com/${env.GITHUB_REPOSITORY}`;
@@ -50,19 +50,19 @@ const bodyText = `
 This PR was created by the \`${env.GITHUB_WORKFLOW}\` workflow, triggered by @${author}
 
 #### Tests:
-${workflowBadges ? `- Tests last run on \`${env.BASE_REF}\`: ${workflowBadges.join(' ')}` : ''}
+${workflowBadges ? `- Tests last run on \`${env.BASE_REF}\`:\n    ${workflowBadges.join('\n    ')}` : ''}
 - ✔️ Build check passed - see the [workflow run](${repoURL}/actions?query=workflow%3A%22${encodeURIComponent(env.GITHUB_WORKFLOW)}%22) (number ${env.GITHUB_RUN_NUMBER}) for more info
 
 #### Checklist:
 - ${milestoneText()}
-- [ ] Changelog up-to-date?
-  - Examine pull requests made since the last release
-  - "Released on" date updated? ${env.CHANGELOG_DATE ? `✔️ \`${env.CHANGELOG_DATE}\`` : `⚠️ couldn't automatically set date`}
 
 #### Next steps:
 - @${author} should request 1 or 2 reviews
 - If any further changes are needed, push to this PR branch
 - After merging, the bot will comment below with a link to the release (if not, look at the PR checks tab)
+
+> [!IMPORTANT]
+> Do **not** use \`[skip ci]\` in commit messages pushed to this PR, as it will prevent the 2nd stage release workflow from running.
 `;
 
 const cmd = [
@@ -94,7 +94,7 @@ function getMilestone() {
     try {
         response = JSON.parse(execSync(request));
     } catch (err) {
-        console.log(`::warning:: Error getting milestones`);
+        console.log(`::warning::Error getting milestones`);
         console.log(err, '\n');
         return;
     }
@@ -104,7 +104,7 @@ function getMilestone() {
             return milestone;
         }
     }
-    console.log(`::warning:: Could not find milestone matching "${env.VERSION}"`);
+    console.log(`::warning::Could not find milestone matching "${env.VERSION}"`);
     return;
 }
 

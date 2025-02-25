@@ -3,10 +3,15 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     versioning-strategy: increase-if-necessary
     labels:
       - 'dependencies'
+    groups:
+      eslint:
+        patterns:
+          - "*eslint*"
+          - "globals"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

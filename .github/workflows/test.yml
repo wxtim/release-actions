@@ -5,6 +5,9 @@ name: Test
 on:
   pull_request:
 
+env:
+  FORCE_COLOR: 2
+
 jobs:
 
   test-main:
@@ -14,15 +17,13 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Style test
-      run: npx eslint .
+    - name: Install
+      run: npm install
 
-    - name: Check that cylc-action-utils.js was not wiped out
-      run: |
-        if [[ ! -f node_modules/cylc-action-utils.js ]]; then
-          echo "::error::node_modules/cylc-action-utils.js not found - do not let npm wipe it out"
-          exit 1
-        fi
+    - name: Style test
+      env:
+        DEBUG: eslint:eslint
+      run: npm run lint
 
     - name: Other setup
       run: echo ".github/test_bin" >> $GITHUB_PATH
@@ -46,19 +47,22 @@ jobs:
         # If configure-git didn't work, commit will fail:
         git commit -a -m "Test commit"
 
+    - name: Unit tests
+      run: npm run test
+
 
   test-stage-1:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
       matrix:
-        pep517: [true, false]
+        project-file: ['setup.py', 'setup.cfg', 'pyproject.toml']
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.x'
 
@@ -86,11 +90,7 @@ jobs:
       run: |
         cp .github/test_files/__init__.py ./__init__.py
         cp .github/test_files/CHANGES.md ./CHANGES.md
-        if ${{ matrix.pep517 }}; then
-          cp .github/test_files/setup.cfg ./setup.cfg
-        else
-          cp .github/test_files/setup.py ./setup.py
-        fi
+        cp .github/test_files/${{ matrix.project-file }} ./${{ matrix.project-file }}
 
         echo "[command]git add ."; git add .
         echo "[command]git commit"
@@ -111,14 +111,7 @@ jobs:
         assert __version__ == '9.2.3', f'::error:: assert version {__version__} == 9.2.3'
         "
         package_version='${{ steps.set-package-version.outputs.package-version }}'
-        # In setup.py projects, the __init__.py __version__ may be different to the setup.py version
-        # but in PEP 517 projects, the setup.cfg version will be the same as __init__.py __version__
-        if ${{ matrix.pep517 }}; then
-          expected_version="9.2.3"
-        else
-          expected_version="1!9.2.3"
-        fi
-        assert_equal "$package_version" "$expected_version"
+        assert_equal "$package_version" "1!9.2.3"
         # Check changes to init file are staged
         exact_grep "M  __init__.py" <(git status -s)
 
@@ -143,7 +136,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: setup python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -155,6 +148,11 @@ jobs:
         shell: python
         run: |
           import json
-          meta_releases = json.loads('${{ steps.test-set-meta-releases.outputs.meta-releases }}')
-          assert isinstance(meta_releases, list)
-          assert len(meta_releases) > 0
+
+          meta_releases_list = json.loads('${{ steps.test-set-meta-releases.outputs.meta-releases }}')
+          assert isinstance(meta_releases_list, list)
+          assert len(meta_releases_list) > 0
+
+          meta_releases_dict = json.loads('${{ steps.test-set-meta-releases.outputs.meta-releases-dict }}')
+          assert isinstance(meta_releases_dict, dict)
+          assert len(meta_releases_dict) > 0
