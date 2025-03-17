@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     - name: Build
-      shell: bash
+      shell: bash -leo pipefail {0}
       run: |
         if [[ -f setup.py ]]; then
           # old style setup.py project
@@ -30,7 +30,7 @@ runs:
         fi
 
     - name: Check build
-      shell: bash
+      shell: bash -leo pipefail {0}
       run: |
         python3 -m pip install twine
         twine check dist/*
@@ -38,5 +38,5 @@ runs:
     - name: Check dependencies
       if: inputs.check-dependencies == 'true'
       # ^ string comparison needed due to https://github.com/actions/runner/issues/2238
-      shell: bash
+      shell: bash -leo pipefail {0}
       run: python3 -m pip install -e .[all] --dry-run --ignore-installed
