@@ -80,6 +80,7 @@ runs:
       # NOTE: use login shell to allow us to work with setup-micromamba
       shell: bash -elo pipefail {0}
       run: |
+        python --version
         wget \
           https://raw.githubusercontent.com/cylc/cylc-admin/master/docs/status/branches.json
         cat branches.json

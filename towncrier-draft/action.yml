@@ -6,7 +6,9 @@ runs:
   steps:
     - name: Install Towncrier if needed
       shell: bash -elo pipefail {0}
-      run: python3 -m pip install -q towncrier
+      run: |
+        python3 -m pip install -q towncrier
+        towncrier --version
 
     - name: Get package version if NodeJS project
       id: node
