@@ -51,23 +51,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Determine which branch to merge into, e.g:
+      # * if a change is made to 1.2.x, merge it into 1.3.x;
+      # * if a change is made to 1.3.x, merge it into 1.4.x;
+      # * if a change is made to 1.4.x, merge it into master.
       - name: Determine base branch
         id: get-base-branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Determine which branch to merge into, e.g:
-          # * if a change is made to 1.2.x, merge it into 1.3.x;
-          # * if a change is made to 1.3.x, merge it into 1.4.x;
-          # * if a change is made to 1.4.x, merge it into master.
-
           # default to the HEAD branch (typically either master or main)
-          base_branch=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+          base_branch="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)"
           isnext=false
 
           # Run through bugfix branches in order, e.g. 1.2.x, 1.3.x, 1.4.x.
           for branch in $(git ls-remote --branches origin '*.x' | sed -n 's/.*refs\/heads\/\(.*\)/\1/p' | sort); do
-            if [[ $branch == $HEAD_BRANCH ]]; then
+            if [[ "$branch" == "$HEAD_BRANCH" ]]; then
               # This is the HEAD branch (the one with the new changes), we
               # should merge into the following bugfix branch.
               isnext=true
@@ -77,6 +76,7 @@ jobs:
               break
             fi
           done
+          echo "::notice::Determined base branch: $base_branch"
           echo "BASE_BRANCH=$base_branch" >> "$GITHUB_ENV"
 
       - name: Checkout base branch
@@ -85,34 +85,41 @@ jobs:
           ref: ${{ env.BASE_BRANCH }}
 
       - name: Checkout sync branch if it exists
-        continue-on-error: true
         run: |
-          git switch -c "$SYNC_BRANCH" "origin/${SYNC_BRANCH}"
-          echo "BASE_BRANCH=$SYNC_BRANCH" >> "$GITHUB_ENV"
+          if git switch -c "$SYNC_BRANCH" "origin/${SYNC_BRANCH}"; then
+            echo "::notice::Pre-existing branch origin/${SYNC_BRANCH} found"
+          else
+            echo "::notice::origin/${SYNC_BRANCH} does not yet exist"
+          fi
 
       - name: Attempt fast-forward
         id: ff
         run: |
+          current_branch="$(git rev-parse HEAD --abbrev-ref)"
+
           if git merge "origin/${HEAD_BRANCH}" --ff-only; then
-            if [[ "$(git rev-parse HEAD)" == "$(git rev-parse "origin/${BASE_BRANCH}")" ]]; then
-              echo "::notice::$BASE_BRANCH is up to date with $HEAD_BRANCH"
-              exit 0
+            if [[ "$(git rev-parse HEAD)" == "$(git rev-parse "origin/${current_branch}")" ]]; then
+              echo "::notice::${current_branch} is up to date with ${HEAD_BRANCH}"
+            elif [[ "$current_branch" == "$SYNC_BRANCH" ]]; then
+              git push origin "$SYNC_BRANCH"
+              echo "::notice::Fast-forwarded ${SYNC_BRANCH} to ${HEAD_BRANCH}"
+            else
+              echo "continue=true" >> "$GITHUB_OUTPUT"
             fi
-            git push origin "$BASE_BRANCH"
-          elif [[ "$BASE_BRANCH" == "$SYNC_BRANCH" ]]; then
-            echo "::notice::Cannot fast-forward $BASE_BRANCH to $HEAD_BRANCH; merge existing PR first"
+          elif [[ "$current_branch" == "$SYNC_BRANCH" ]]; then
+            echo "::notice::Cannot fast-forward ${current_branch} to ${HEAD_BRANCH}; merge existing PR first"
           else
             echo "continue=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Attempt merge into master
+      - name: Attempt merge into base branch
         id: merge
         if: steps.ff.outputs.continue
         run: |
-          git switch master
+          git switch "$BASE_BRANCH"
           if git merge "origin/${HEAD_BRANCH}"; then
             if git diff HEAD^ --exit-code --stat; then
-              echo "::notice::No diff between master and $HEAD_BRANCH"
+              echo "::notice::No diff between ${BASE_BRANCH} and ${HEAD_BRANCH}"
               exit 0
             fi
           else
@@ -144,7 +151,7 @@ jobs:
         run: |
           url="$(
             gh pr create --head "$SYNC_BRANCH" \
-            --title "🤖 Merge ${SYNC_BRANCH} into master" \
+            --title "🤖 Merge ${SYNC_BRANCH} into ${BASE_BRANCH}" \
             --body "$BODY"
           )"
           echo "::notice::PR created at ${url}"
