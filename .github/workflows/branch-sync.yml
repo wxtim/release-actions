@@ -17,6 +17,7 @@ jobs:
       HEAD_BRANCH: ${{ inputs.head_branch || github.ref_name }}
       STATUS_JSON: https://raw.githubusercontent.com/cylc/cylc-admin/master/docs/status/branches.json
       FORCE_COLOR: 2
+      PS4: '+ \[\033[0;34m\]' # blue to stand out in logs
     steps:
       - name: Check branch name
         shell: python
@@ -79,10 +80,7 @@ jobs:
           echo "::notice::Determined base branch: $base_branch"
           echo "BASE_BRANCH=$base_branch" >> "$GITHUB_ENV"
 
-      - name: Checkout base branch
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ env.BASE_BRANCH }}
+          git switch "$base_branch"
 
       - name: Checkout sync branch if it exists
         run: |
@@ -95,6 +93,8 @@ jobs:
       - name: Attempt fast-forward
         id: ff
         run: |
+          if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
+
           current_branch="$(git rev-parse HEAD --abbrev-ref)"
 
           if git merge "origin/${HEAD_BRANCH}" --ff-only; then
@@ -116,6 +116,8 @@ jobs:
         id: merge
         if: steps.ff.outputs.continue
         run: |
+          if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
+
           git switch "$BASE_BRANCH"
           if git merge "origin/${HEAD_BRANCH}"; then
             if git diff HEAD^ --exit-code --stat; then
