@@ -152,7 +152,7 @@ jobs:
             Triggered by `${{ github.event_name }}`
         run: |
           url="$(
-            gh pr create --head "$SYNC_BRANCH" \
+            gh pr create --head "$SYNC_BRANCH" --base "$BASE_BRANCH" \
             --title "🤖 Merge ${SYNC_BRANCH} into ${BASE_BRANCH}" \
             --body "$BODY"
           )"
