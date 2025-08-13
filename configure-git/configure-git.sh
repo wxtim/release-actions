@@ -18,6 +18,5 @@
 
 git config --global user.name "github-actions[bot]"
 git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git config push.default current || true  # won't work if cwd is not git repo
-
+git config --global push.default current
 git config --global advice.diverging false

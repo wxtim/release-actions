@@ -95,7 +95,7 @@ jobs:
         run: |
           if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
 
-          current_branch="$(git rev-parse HEAD --abbrev-ref)"
+          current_branch="$(git branch --show-current)"
 
           if git merge "origin/${HEAD_BRANCH}" --ff-only; then
             if [[ "$(git rev-parse HEAD)" == "$(git rev-parse "origin/${current_branch}")" ]]; then
@@ -133,7 +133,9 @@ jobs:
         id: push
         if: steps.merge.outputs.continue
         run: |
-          git switch -c "$SYNC_BRANCH" "origin/${HEAD_BRANCH}"
+          if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
+
+          git switch "$SYNC_BRANCH"
           git push origin "$SYNC_BRANCH"
           echo "continue=true" >> $GITHUB_OUTPUT
 
@@ -152,7 +154,7 @@ jobs:
             Triggered by `${{ github.event_name }}`
         run: |
           url="$(
-            gh pr create --head "$SYNC_BRANCH" \
+            gh pr create --head "$SYNC_BRANCH" --base "$BASE_BRANCH" \
             --title "🤖 Merge ${SYNC_BRANCH} into ${BASE_BRANCH}" \
             --body "$BODY"
           )"
