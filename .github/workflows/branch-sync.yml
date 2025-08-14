@@ -135,7 +135,7 @@ jobs:
         run: |
           if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
 
-          git switch "$SYNC_BRANCH"
+          git switch -c "$SYNC_BRANCH" "origin/${HEAD_BRANCH}"
           git push origin "$SYNC_BRANCH"
           echo "continue=true" >> $GITHUB_OUTPUT
 
