@@ -12,6 +12,11 @@ inputs:
       being merged into else the branch the workflow is being run against.
     required: false
     default: AUTO
+  branch:
+    description: |
+      The branch to use when determining compatible versions, if running
+      in workflow dispatch.
+    required: false
 
   cylc_flow:
     description: Install cylc-flow (default=true)
@@ -96,7 +101,7 @@ runs:
       shell: bash -elo pipefail {0}
       env:
         META_RELEASE: ${{ inputs.meta_release }}
-        BASE_BRANCH: ${{ github.base_ref || github.ref }}
+        BASE_BRANCH: ${{ inputs.branch || github.base_ref || github.ref }}
         REPOSITORY: ${{ github.repository }}
       run: "${{ github.action_path }}/../bin/pick_compatible_branches"
 
