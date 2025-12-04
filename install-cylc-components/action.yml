@@ -12,6 +12,11 @@ inputs:
       being merged into else the branch the workflow is being run against.
     required: false
     default: AUTO
+  branch:
+    description: |
+      The branch to use when determining compatible versions, if running
+      in workflow dispatch.
+    required: false
 
   cylc_flow:
     description: Install cylc-flow (default=true)
@@ -91,8 +96,10 @@ runs:
   using: composite
   steps:
     - name: Fetch meta-release info
-      shell: bash
+      # NOTE: use login shell to allow us to work with setup-micromamba
+      shell: bash -elo pipefail {0}
       run: |
+        python --version
         wget \
           https://raw.githubusercontent.com/cylc/cylc-admin/master/docs/status/branches.json
         cat branches.json
@@ -105,15 +112,15 @@ runs:
         (inputs.metomi_rose == 'true' && !inputs.metomi_rose_tag) ||
         (inputs.cylc_rose == 'true' && !inputs.cylc_rose_tag)
       id: get_tag
-      shell: bash
+      shell: bash -elo pipefail {0}
       env:
         META_RELEASE: ${{ inputs.meta_release }}
-        BASE_BRANCH: ${{ github.base_ref || github.ref }}
+        BASE_BRANCH: ${{ inputs.branch || github.base_ref || github.ref }}
         REPOSITORY: ${{ github.repository }}
       run: "${{ github.action_path }}/../bin/pick_compatible_branches"
 
     - name: Install
-      shell: bash
+      shell: bash -elo pipefail {0}
       env:
         cylc_flow: ${{ inputs.cylc_flow_tag     || steps.get_tag.outputs.cylc_flow }}
         cylc_uis:  ${{ inputs.cylc_uiserver_tag || steps.get_tag.outputs.cylc_uiserver }}

@@ -8,16 +8,24 @@ on:
       head_branch:
         type: string
         required: false
+      ignore_branches:
+        type: string
+        required: false
+        default: ''
+
+concurrency:
+  group: sync-${{ inputs.head_branch || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      BASE_BRANCH: master
       HEAD_BRANCH: ${{ inputs.head_branch || github.ref_name }}
       STATUS_JSON: https://raw.githubusercontent.com/cylc/cylc-admin/master/docs/status/branches.json
       FORCE_COLOR: 2
+      PS4: '+ \[\033[0;34m\]' # blue to stand out in logs
     steps:
       - name: Check branch name
         shell: python
@@ -44,44 +52,87 @@ jobs:
             print(f'HEAD_BRANCH={branch}', file=F)
             print(f'SYNC_BRANCH={branch}-sync', file=F)
 
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: master
-
       - name: Configure git
         uses: cylc/release-actions/configure-git@v1
 
-      - name: Checkout sync branch if it exists
-        continue-on-error: true
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Determine which branch to merge into, e.g:
+      # * if a change is made to 1.2.x, merge it into 1.3.x;
+      # * if a change is made to 1.3.x, merge it into 1.4.x;
+      # * if a change is made to 1.4.x, merge it into master.
+      - name: Determine base branch
+        id: get-base-branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git switch -c "$SYNC_BRANCH" "origin/${SYNC_BRANCH}"
-          echo "BASE_BRANCH=$SYNC_BRANCH" >> "$GITHUB_ENV"
+          # default to the HEAD branch (typically either master or main)
+          base_branch="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)"
+          isnext=false
+
+          # Run through bugfix branches in order, e.g. 1.2.x, 1.3.x, 1.4.x.
+          for branch in $(git ls-remote --branches origin '*.x' | sed -n 's/.*refs\/heads\/\(.*\)/\1/p' | sort); do
+            if [[ "$branch" == "$HEAD_BRANCH" ]]; then
+              # This is the HEAD branch (the one with the new changes), we
+              # should merge into the following bugfix branch.
+              isnext=true
+            elif [[ -n "${{ inputs.ignore_branches }}" ]] && grep -qE "${{ inputs.ignore_branches }}" <<< "$branch"; then
+              # This branch is excluded by the provied pattern
+              continue
+            elif $isnext; then
+              # Merge into this branch.
+              base_branch="$branch"
+              break
+            fi
+          done
+          echo "::notice::Determined base branch: $base_branch"
+          echo "BASE_BRANCH=$base_branch" >> "$GITHUB_ENV"
+
+          git switch "$base_branch"
+
+      - name: Checkout sync branch if it exists
+        run: |
+          if git switch -c "$SYNC_BRANCH" "origin/${SYNC_BRANCH}"; then
+            echo "::notice::Pre-existing branch origin/${SYNC_BRANCH} found"
+          else
+            echo "::notice::origin/${SYNC_BRANCH} does not currently exist"
+          fi
 
       - name: Attempt fast-forward
         id: ff
         run: |
+          if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
+
+          current_branch="$(git branch --show-current)"
+
           if git merge "origin/${HEAD_BRANCH}" --ff-only; then
-            if [[ "$(git rev-parse HEAD)" == "$(git rev-parse "origin/${BASE_BRANCH}")" ]]; then
-              echo "::notice::$BASE_BRANCH is up to date with $HEAD_BRANCH"
+            if [[ "$(git rev-parse HEAD)" == "$(git rev-parse "origin/${current_branch}")" ]]; then
+              echo "::notice::${current_branch} is up to date with ${HEAD_BRANCH}"
+              exit 0
+            elif [[ "$current_branch" == "$SYNC_BRANCH" ]]; then
+              git push origin "$SYNC_BRANCH"
+              echo "::notice::Fast-forwarded ${SYNC_BRANCH} to ${HEAD_BRANCH}"
               exit 0
             fi
-            git push origin "$BASE_BRANCH"
-          elif [[ "$BASE_BRANCH" == "$SYNC_BRANCH" ]]; then
-            echo "::notice::Cannot fast-forward $BASE_BRANCH to $HEAD_BRANCH; merge existing PR first"
-          else
-            echo "continue=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$current_branch" == "$SYNC_BRANCH" ]]; then
+            echo "::notice::Cannot fast-forward ${current_branch} to ${HEAD_BRANCH}; merge existing PR first"
+            exit 0
           fi
+          echo "continue=true" >> "$GITHUB_OUTPUT"
 
-      - name: Attempt merge into master
+      - name: Attempt merge into base branch
         id: merge
         if: steps.ff.outputs.continue
         run: |
-          git switch master
+          if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
+
+          git switch "$BASE_BRANCH"
           if git merge "origin/${HEAD_BRANCH}"; then
             if git diff HEAD^ --exit-code --stat; then
-              echo "::notice::No diff between master and $HEAD_BRANCH"
+              echo "::notice::No diff between ${BASE_BRANCH} and ${HEAD_BRANCH}"
               exit 0
             fi
           else
@@ -93,6 +144,8 @@ jobs:
         id: push
         if: steps.merge.outputs.continue
         run: |
+          if [[ -n "$RUNNER_DEBUG" ]]; then set -x; fi
+
           git switch -c "$SYNC_BRANCH" "origin/${HEAD_BRANCH}"
           git push origin "$SYNC_BRANCH"
           echo "continue=true" >> $GITHUB_OUTPUT
@@ -112,8 +165,8 @@ jobs:
             Triggered by `${{ github.event_name }}`
         run: |
           url="$(
-            gh pr create --head "$SYNC_BRANCH" \
-            --title "🤖 Merge ${SYNC_BRANCH} into master" \
+            gh pr create --head "$SYNC_BRANCH" --base "$BASE_BRANCH" \
+            --title "🤖 Merge ${SYNC_BRANCH} into ${BASE_BRANCH}" \
             --body "$BODY"
           )"
           echo "::notice::PR created at ${url}"
