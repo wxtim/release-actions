@@ -17,6 +17,12 @@ inputs:
       The branch to use when determining compatible versions, if running
       in workflow dispatch.
     required: false
+  editable_installations:
+    description: |
+      Install repositories in editable mode.
+      This may be useful for running coverage.
+    default: false
+    required: false
 
   cylc_flow:
     description: Install cylc-flow (default=true)
@@ -115,24 +121,31 @@ runs:
       run: |
         REQS=requirement.txt
         touch "$REQS"
+
+        if [[ ${{ inputs.editable_installations }} ]]; then
+          EDIT="--editable"
+        else
+          EDIT=''
+        fi
+
         if [[ ${{ inputs.cylc_flow }} == true ]]; then
           echo \
-            "cylc-flow[${{ inputs.cylc_flow_opts }}] @ git+https://github.com/${{ inputs.cylc_flow_repo }}@${cylc_flow}" \
+            "${EDITABLE} cylc-flow[${{ inputs.cylc_flow_opts }}] @ git+https://github.com/${{ inputs.cylc_flow_repo }}@${cylc_flow}" \
             >> "$REQS"
         fi
         if [[ ${{ inputs.cylc_uiserver }} == true ]]; then
           echo \
-            "cylc-uiserver[${{ inputs.cylc_uiserver_opts }}] @ git+https://github.com/${{ inputs.cylc_uiserver_repo }}@${cylc_uis}" \
+            "${EDITABLE} cylc-uiserver[${{ inputs.cylc_uiserver_opts }}] @ git+https://github.com/${{ inputs.cylc_uiserver_repo }}@${cylc_uis}" \
             >> "$REQS"
         fi
         if [[ ${{ inputs.metomi_rose }} == true ]]; then
           echo \
-            "metomi-rose[${{ inputs.metomi_rose_opts }}] @ git+https://github.com/${{ inputs.metomi_rose_repo }}@${meto_rose}" \
+            "${EDITABLE} metomi-rose[${{ inputs.metomi_rose_opts }}] @ git+https://github.com/${{ inputs.metomi_rose_repo }}@${meto_rose}" \
             >> "$REQS"
         fi
         if [[ ${{ inputs.cylc_rose }} == true ]]; then
           echo \
-            "cylc-rose[${{ inputs.cylc_rose_opts }}] @ git+https://github.com/${{ inputs.cylc_rose_repo }}@${cylc_rose}" \
+            "${EDITABLE} cylc-rose[${{ inputs.cylc_rose_opts }}] @ git+https://github.com/${{ inputs.cylc_rose_repo }}@${cylc_rose}" \
             >> "$REQS"
         fi
 
