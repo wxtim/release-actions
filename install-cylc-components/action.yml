@@ -152,5 +152,5 @@ runs:
           ARGS+=("git+https://github.com/${{ inputs.cylc_rose_repo }}@${cylc_rose}#egg=cylc-rose[${{ inputs.cylc_rose_opts }}]")
         fi
 
-        echo "${ARGS[@]}"
+        echo "pip install ${ARGS[@]}"
         pip install "${ARGS[@]}"
